@@ -17,6 +17,8 @@ const ConfigLayoutJSON = `{"%s": {"address": "%s", "password": "%s", "log": "%s"
 const ConfigLayoutYAML = "%s:\n  address: %s\n  password: %s\n  log: %s\n  type: %s"
 
 func TestNewConfig(t *testing.T) {
+	config.AllowXDGConfig = false // Disable XDG config for testing
+
 	t.Run("no errors yaml", func(t *testing.T) {
 		configFileName := "rcon-test-local.yaml"
 		stringBody := fmt.Sprintf(ConfigLayoutYAML, config.DefaultConfigEnv, "", "", DefaultTestLogName, "")
@@ -74,7 +76,7 @@ func TestNewConfig(t *testing.T) {
 		defer os.Remove(configFileName)
 
 		cfg, err := config.NewConfig(configFileName)
-		assert.EqualError(t, err, "parse file: yaml: line 1: did not find expected key")
+		assert.EqualError(t, err, "parse file rcon-test-local.yaml: yaml: line 1: did not find expected key")
 
 		assert.Nil(t, cfg)
 	})
@@ -86,7 +88,7 @@ func TestNewConfig(t *testing.T) {
 		defer os.Remove(configFileName)
 
 		cfg, err := config.NewConfig(configFileName)
-		assert.EqualError(t, err, "parse file: unsupported file extension .ini")
+		assert.EqualError(t, err, "parse file unsupported-local.ini: unsupported file extension .ini")
 
 		assert.Nil(t, cfg)
 	})

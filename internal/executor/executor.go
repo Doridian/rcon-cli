@@ -289,7 +289,7 @@ func (executor *Executor) getFlags() []cli.Flag {
 			Name:    "config",
 			Aliases: []string{"c"},
 			Usage:   "Path to the configuration file",
-			Value:   config.DefaultConfigName,
+			Value:   "",
 		},
 		&cli.StringFlag{
 			Name:    "env",

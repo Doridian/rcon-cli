@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/adrg/xdg"
 )
 
 // DefaultConfigName sets the default config file name.
@@ -26,6 +28,8 @@ var (
 	// extension. Allowed extensions is `.json`, `.yml`, `.yaml`.
 	ErrUnsupportedFileExt = errors.New("unsupported file extension")
 )
+
+var AllowXDGConfig = true
 
 // Config allows to take a remote server address and password from
 // the configuration file. This enables not to specify these flags when
@@ -45,7 +49,7 @@ type Config map[string]Session
 func NewConfig(name string) (*Config, error) {
 	cfg := new(Config)
 	if err := cfg.ParseFromFile(name); err != nil {
-		return nil, fmt.Errorf("parse file: %w", err)
+		return nil, err
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -62,14 +66,35 @@ func (cfg *Config) ParseFromFile(name string) error {
 		return cfg.parse(name)
 	}
 
-	home, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		return fmt.Errorf("get abs path: %w", err)
+	var err error
+	configPath := ""
+	if AllowXDGConfig {
+		configPath, err = xdg.ConfigFile(filepath.Join("gorcon", DefaultConfigName))
+		if err != nil {
+			return err
+		}
 	}
 
-	name = home + "/" + DefaultConfigName
-	if err = cfg.parse(name); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
+	return cfg.parseFirstExist(
+		configPath,
+		DefaultConfigName,
+	)
+}
+
+// Parse the first file that exists from the provided names.
+func (cfg *Config) parseFirstExist(names ...string) error {
+	var err error
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+
+		if err = cfg.parse(name); err == nil {
+			return nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 	}
 
 	*cfg = Config{DefaultConfigEnv: {}}
@@ -97,7 +122,7 @@ func (cfg *Config) Validate() error {
 func (cfg *Config) parse(name string) error {
 	file, err := os.ReadFile(name)
 	if err != nil {
-		return fmt.Errorf("read file: %w", err)
+		return fmt.Errorf("read file %s: %w", name, err)
 	}
 
 	switch ext := path.Ext(name); ext {
@@ -109,5 +134,9 @@ func (cfg *Config) parse(name string) error {
 		err = fmt.Errorf("%w %s", ErrUnsupportedFileExt, ext)
 	}
 
-	return err
+	if err != nil {
+		return fmt.Errorf("parse file %s: %w", name, err)
+	}
+
+	return nil
 }
